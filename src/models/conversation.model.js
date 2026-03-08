@@ -58,10 +58,10 @@ class Conversation {
     return result[0].total
   }
 
-  async create(name, type, participantIds) {
+  async create(name, type, participantIds, userId) {
     const [{ insertId }] = await pool.execute(
-      'INSERT INTO conversations (name, type) VALUES (?, ?)',
-      [name, type],
+      'INSERT INTO conversations (name, type, created_by) VALUES (?, ?, ?)',
+      [name, type, userId],
     )
 
     const placeholders = participantIds.map(() => '(?, ?)').join(', ')
@@ -85,6 +85,16 @@ class Conversation {
 
     return insertId
   }
+
+  async findOne(id) {
+    const [rows] = await pool.execute(
+      'SELECT id, name, type FROM conversations WHERE id = ?',
+      [id],
+    )
+    return rows[0]
+  }
+
+  async isUserMember(conversationId, userId) {}
 }
 
 module.exports = new Conversation()

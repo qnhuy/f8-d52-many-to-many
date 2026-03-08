@@ -3,12 +3,11 @@ const userModel = require('../models/user.model')
 class UserController {
   async search(req, res) {
     const { q } = req.query
-    if (!q) return res.error(400, 'Query parameter q is required')
+    const { user } = req
+    if (!q) return res.success([])
 
-    const user = await userModel.findByEmail(q)
-    if (!user) return res.error(400, 'User not found')
-
-    res.success(user)
+    const users = await userModel.searchByEmail(q, user.id)
+    res.success(users)
   }
 }
 

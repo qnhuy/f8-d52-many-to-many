@@ -6,6 +6,7 @@ const conversationService = require('../services/conversation.service')
 class ConversationController {
   async create(req, res) {
     const { name, type, participant_ids } = req.body
+    const { user } = req
     if (!name || !type || !participant_ids || participant_ids.length === 0) {
       return res.error(
         422,
@@ -21,8 +22,22 @@ class ConversationController {
       return res.error(422, 'Invalid: participant_ids must be an array')
     }
 
-    const insertId = await conversationModel.create(name, type, participant_ids)
-    res.success(insertId, 201)
+    const insertId = await conversationModel.create(
+      name,
+      type,
+      participant_ids,
+      user.id,
+    )
+
+    const newConversation = {
+      id: insertId,
+      name,
+      type,
+      createdBy: user.id,
+      createAt: new Date().toISOString(),
+    }
+
+    res.success(newConversation, 201)
   }
 
   async getUserConversations(req, res) {
@@ -46,13 +61,31 @@ class ConversationController {
       return res.error(422, 'Missing required field(s): user_id')
     }
 
+    const conversation = await conversationModel.findOne(conversationId)
+    if (!conversation) {
+      return res.error(404, 'Conversation not found')
+    }
+
+    if (conversation.type !== 'group') {
+      return res.erorr(400, 'Cannot add participants to a direct conversation')
+    }
+
     const user = await userModel.findOne(user_id)
     if (!user) {
       return res.error(400, 'Error: User not found')
     }
 
-    const insertId = await conversationModel.addNewUser(conversationId, user_id)
-    res.success({ insertId })
+    const isAlreadyMember = await conversationModel.isUserMember(
+      conversationId,
+      user_id,
+    )
+    if (isAlreadyMember) {
+      return res.error(409, 'User already in conversation')
+    }
+
+    await conversationModel.addNewUser(conversationId, user_id)
+
+    res.success({ user_id, joined_at: new Date().toISOString() }, 201)
   }
 
   async sendMessage(req, res) {
@@ -63,17 +96,45 @@ class ConversationController {
 
     const conversationId = req.params.id
     const { user } = req
+
+    const isMember = await conversationModel.isUserMember(
+      conversationId,
+      user.id,
+    )
+    if (!isMember) {
+      return res.error(403, 'Forbidden')
+    }
+
     const insertId = await messageModel.create(
       conversationId,
       user.id,
       String(content),
     )
-    res.success({ insertId })
+    res.success(
+      {
+        id: insertId,
+        conversation_id: conversationId,
+        sender_id: user.id,
+        content,
+        created_at: new Date().toISOString(),
+      },
+      201,
+    )
   }
 
   async getConversationMessages(req, res) {
     const conversationId = req.params.id
     const { page, limit } = req.query
+    const { user } = req
+
+    const isMember = await conversationModel.isUserMember(
+      conversationId,
+      user.id,
+    )
+    if (!isMember) {
+      return res.error(403, 'Forbidden')
+    }
+
     const result = await conversationService.paginate(
       page,
       limit,

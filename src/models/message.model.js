@@ -28,7 +28,7 @@ class Message {
       JOIN users u ON u.id = m.sender_id 
       ${whereSQL} 
       ORDER BY
-        m.created_at DESC,
+        m.created_at ASC,
         m.id DESC 
         LIMIT ? OFFSET ?`,
       params,

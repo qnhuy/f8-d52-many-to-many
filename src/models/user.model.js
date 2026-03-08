@@ -30,6 +30,14 @@ class User {
     return rows[0]
   }
 
+  async searchByEmail(email, excludeUserId) {
+    const [rows] = await pool.execute(
+      'SELECT id, email FROM users WHERE email like ? AND id != ? LIMIT 20',
+      [`%${email}%`, excludeUserId],
+    )
+    return rows
+  }
+
   async findByEmailAndPassword(email, password) {
     const [rows] = await pool.execute(
       'SELECT id, name, email, password FROM users WHERE email = ? AND password = ?',

@@ -13,7 +13,13 @@ class AuthController {
 
     const insertId = await userModel.create(email, password)
     const newUser = { id: insertId, email }
-    res.success(newUser, 201)
+    const expiresIn = 60 * 60
+    const token = jwt.sign({ sub: insertId }, secret, { expiresIn })
+
+    res.success(newUser, 201, {
+      access_token: token,
+      access_token_expire: expiresIn,
+    })
   }
 
   async login(req, res) {
