@@ -1,6 +1,6 @@
 const router = require('express').Router()
 const conversationController = require('../controllers/conversation.controller')
-const authRequired = require('../middlewares/authRequire')
+const authRequired = require('../middlewares/authRequired')
 
 router.post('/', authRequired, conversationController.create)
 router.get('/', authRequired, conversationController.getUserConversations)
