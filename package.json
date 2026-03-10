@@ -9,7 +9,7 @@
   },
   "name": "test-api",
   "version": "1.0.0",
-  "type": "module",
+  "type": "commonjs",
   "scripts": {
     "dev": "node --watch server",
     "start": "node server"
