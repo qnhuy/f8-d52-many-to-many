@@ -24,7 +24,7 @@ class User {
 
   async findByEmail(email) {
     const [rows] = await pool.execute(
-      'SELECT name, email FROM users WHERE email = ?',
+      'SELECT id, name, email, password FROM users WHERE email = ?',
       [email],
     )
     return rows[0]
@@ -52,6 +52,22 @@ class User {
       [email, password],
     )
     return insertId
+  }
+
+  async findByRefreshToken(token) {
+    const [rows] = await pool.execute(
+      'SELECT id, name, email FROM users WHERE refresh_token = ? AND refresh_expires_at >= NOW() LIMIT 1',
+      [token],
+    )
+    return rows[0]
+  }
+
+  async updateRefreshToken(id, token, expire) {
+    const [{ affectedRows }] = await pool.execute(
+      'UPDATE users SET refresh_token = ?, refresh_expires_at = ? WHERE id = ?',
+      [token, expire, id],
+    )
+    return affectedRows
   }
 }
 

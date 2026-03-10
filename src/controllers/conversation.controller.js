@@ -67,7 +67,7 @@ class ConversationController {
     }
 
     if (conversation.type !== 'group') {
-      return res.erorr(400, 'Cannot add participants to a direct conversation')
+      return res.error(400, 'Cannot add participants to a direct conversation')
     }
 
     const user = await userModel.findOne(user_id)

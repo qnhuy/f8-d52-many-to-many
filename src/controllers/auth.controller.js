@@ -1,39 +1,63 @@
-const jwt = require('jsonwebtoken')
+const revokedTokenModel = require('../models/revokedToken.model')
 const userModel = require('../models/user.model')
-const { secret } = require('../configs/jwt')
+const authService = require('../services/auth.service')
 
 class AuthController {
   async register(req, res) {
     const { email, password } = req.body
 
-    const existingUser = await userModel.findByEmail(email)
-    if (existingUser) {
+    const userExisted = await userModel.findByEmail(email)
+    if (userExisted) {
       return res.error(400, 'Email already registered')
     }
 
-    const insertId = await userModel.create(email, password)
-    const newUser = { id: insertId, email }
-    const expiresIn = 60 * 60
-    const token = jwt.sign({ sub: insertId }, secret, { expiresIn })
+    const hashedPassword = await authService.hashPassword(password)
+    const userId = await userModel.create(email, hashedPassword)
+    const tokenInfo = await authService.getTokenInfo(userId)
 
-    res.success(newUser, 201, {
-      access_token: token,
-      access_token_expire: expiresIn,
-    })
+    res.success({ id: userId, email }, 201, tokenInfo)
   }
 
   async login(req, res) {
     const { email, password } = req.body
-    const user = await userModel.findByEmailAndPassword(email, password)
-    if (!user) return res.error(401, 'Unauthorized')
 
-    const expiresIn = 60 * 60
-    const token = jwt.sign({ sub: user.id }, secret, { expiresIn })
+    const user = await userModel.findByEmail(email)
+    if (!user) {
+      return res.error(401, 'Unauthorized')
+    }
 
-    res.success(user, 200, {
-      access_token: token,
-      access_token_expire: expiresIn,
-    })
+    const isValid = await authService.comparePassword(password, user.password)
+    if (!isValid) {
+      return res.error(401, 'Unauthorized')
+    }
+
+    const tokenInfo = await authService.getTokenInfo(user.id)
+    res.success(user, 200, tokenInfo)
+  }
+
+  async refreshToken(req, res) {
+    const oldToken = req.body.refresh_token
+    if (!oldToken) {
+      return res.error(400, 'Refresh token is required')
+    }
+
+    const user = await userModel.findByRefreshToken(oldToken)
+    if (!user) {
+      return res.error(401, 'Unauthorized')
+    }
+
+    const tokenInfo = await authService.getTokenInfo(user.id)
+    res.success(tokenInfo)
+  }
+
+  async logout(req, res) {
+    const { token } = req
+    if (!token) {
+      return res.error(401, 'Unauthorized')
+    }
+
+    await revokedTokenModel.create(token)
+    res.success(token)
   }
 
   getCurrentUser(req, res) {

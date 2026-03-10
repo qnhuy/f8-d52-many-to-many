@@ -94,7 +94,13 @@ class Conversation {
     return rows[0]
   }
 
-  async isUserMember(conversationId, userId) {}
+  async isUserMember(conversationId, userId) {
+    const [rows] = await pool.execute(
+      `SELECT id FROM conversation_participants WHERE conversation_id = ? AND user_id = ? LIMIT 1`,
+      [conversationId, userId],
+    )
+    return rows.length > 0
+  }
 }
 
 module.exports = new Conversation()
